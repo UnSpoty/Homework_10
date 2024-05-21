@@ -1,10 +1,3 @@
-// Реализовать аналог командного интерпретатора bash. При запуске
-// программы пользователю предлагается ввести имя программы и опции
-// запуска программы. Программа порождает процесс и в нем выполняет
-// введенную программу с заданными опциями, ждет завершения
-// дочернего процесса. Снова возвращается к вводу следующей
-// программы. Выход из интерпретатора по команде exit.
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -14,34 +7,41 @@
 
 int main() {
     char command[100];
+    char *args[10];
     pid_t pid;
 
     while (1) {
-        printf("Programm name with startup options: "); 
+        printf("Program name with startup options: "); 
         fgets(command, sizeof(command), stdin);
         command[strcspn(command, "\n")] = 0;
+
+        // Проверка на команду выхода
+        if (strcmp(command, "exit") == 0) {
+            exit(EXIT_SUCCESS);
+        }
+
+        // Разбиваем команду на аргументы
+        int i = 0;
+        args[i] = strtok(command, " ");
+        while (args[i] != NULL) {
+            i++;
+            args[i] = strtok(NULL, " ");
+        }
 
         pid = fork();
         if (pid == 0) {
             // Если мы находимся в дочернем процессе, выполняем введенную программу
-            system(command);
-            exit(EXIT_SUCCESS);
+            if (execvp(args[0], args) == -1) {
+                perror("exec");
+                exit(EXIT_FAILURE);
+            }
         } else if (pid > 0) {
             // Если мы находимся в родительском процессе, ожидаем завершения дочернего процесса
             wait(NULL);
-            exit(EXIT_SUCCESS);
-        }
-        else
-        {
-        // Не удалось запустить дочерний процесс
-        perror("[PERROR] fork status:");
-        exit(EXIT_FAILURE);
-
-        }
-
-
-        if (strcmp(command, "exit") == 0) {
-            exit(EXIT_SUCCESS);
+        } else {
+            // Не удалось запустить дочерний процесс
+            perror("fork");
+            exit(EXIT_FAILURE);
         }
     }
 
